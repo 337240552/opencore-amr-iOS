@@ -16,7 +16,7 @@ readonly OLDPATH=${PATH}
 # Add iPhoneOS-V6 to the list of platforms below if you need armv6 support.
 # Note that iPhoneOS-V6 support is not available with the iOS6 SDK.
 PLATFORMS="iPhoneSimulator iPhoneSimulator64"
-PLATFORMS+=" iPhoneOS-V7 iPhoneOS-V7s iPhoneOS-V7-arm64"
+PLATFORMS+=" iPhoneOS-V7s iPhoneOS-V7-arm64"
 readonly PLATFORMS
 readonly SRCDIR=$(dirname $0)
 readonly TOPDIR=$(pwd)
@@ -44,7 +44,8 @@ fi
 rm -rf ${BUILDDIR} ${AMRNBTARGETDIR} ${AMRWBTARGETDIR}
 mkdir -p ${BUILDDIR} ${AMRNBTARGETDIR}/Headers/ ${AMRWBTARGETDIR}/Headers/
 
-make clean
+#如果是首次编译忽略
+make clean || true
 for PLATFORM in ${PLATFORMS}; do
   ARCH2=""
   CXX="xcrun --sdk iphoneos clang++  "
@@ -55,12 +56,6 @@ for PLATFORM in ${PLATFORMS}; do
   elif [[ "${PLATFORM}" == "iPhoneOS-V7s" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv7s"
-  elif [[ "${PLATFORM}" == "iPhoneOS-V7" ]]; then
-    PLATFORM="iPhoneOS"
-    ARCH="armv7"
-  elif [[ "${PLATFORM}" == "iPhoneOS-V6" ]]; then
-    PLATFORM="iPhoneOS"
-    ARCH="armv6"
   elif [[ "${PLATFORM}" == "iPhoneSimulator64" ]]; then
     PLATFORM="iPhoneSimulator"
     ARCH="x86_64"
@@ -75,12 +70,15 @@ for PLATFORM in ${PLATFORMS}; do
   SDKROOT="${PLATFORMSROOT}/"
   SDKROOT+="${PLATFORM}.platform/Developer/SDKs/${PLATFORM}${SDK}.sdk/"
   CFLAGS="-arch ${ARCH2:-${ARCH}} -pipe -isysroot ${SDKROOT} -O3 -DNDEBUG"
-  CFLAGS+=" -miphoneos-version-min=7.0 ${EXTRA_CFLAGS}"
+  CFLAGS+=" -miphoneos-version-min=9.0 ${EXTRA_CFLAGS}"
   set -x
+
+    # --disable-shared --enable-static \
+    # --disable-static --enable-shared \
   export PATH="${DEVROOT}/usr/bin:${OLDPATH}"
   ${SRCDIR}/configure --host=${ARCH}-apple-darwin --prefix=${ROOTDIR} \
     --build=$(${SRCDIR}/config.guess) \
-    --disable-shared --enable-static \
+    --disable-static --enable-shared \
 	CXX="${CXX} -arch ${ARCH2:-${ARCH}} " \
     CFLAGS="${CFLAGS}" \
 	CXXFLAGS="${CFLAGS} -stdlib=libc++ -isystem ${SDKROOT}/usr/include" \
@@ -88,8 +86,12 @@ for PLATFORM in ${PLATFORMS}; do
 
   make -j4 V=0
   make install
-  AMRNBLIBLIST+=" ${ROOTDIR}/lib/libopencore-amrnb.a"
-  AMRWBLIBLIST+=" ${ROOTDIR}/lib/libopencore-amrwb.a"
+  # AMRNBLIBLIST+=" ${ROOTDIR}/lib/libopencore-amrnb.a"
+  # AMRWBLIBLIST+=" ${ROOTDIR}/lib/libopencore-amrwb.a"
+
+
+  AMRNBLIBLIST+=" ${ROOTDIR}/lib/libopencore-amrnb.dylib"
+  AMRWBLIBLIST+=" ${ROOTDIR}/lib/libopencore-amrwb.dylib"
 
   make clean
   export PATH=${OLDPATH}
